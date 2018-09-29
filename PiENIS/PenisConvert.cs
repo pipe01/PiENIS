@@ -6,6 +6,9 @@ using System.Text;
 
 namespace PiENIS
 {
+    /// <summary>
+    /// Provides utilities for directly converting PENIS files to .NET objects.
+    /// </summary>
     public static class PenisConvert
     {
         private static readonly Type[] PrimitiveTypes = new[]
@@ -17,6 +20,11 @@ namespace PiENIS
             typeof(string)
         };
 
+        /// <summary>
+        /// Serializes <paramref name="obj"/> into a PENIS file using <paramref name="config"/>.
+        /// </summary>
+        /// <param name="obj">The object to be serialized.</param>
+        /// <param name="config">The configuration to use.</param>
         public static string SerializeObject(object obj, PenisConfiguration config = null)
         {
             return Lexer.Unlex(Parser.Unparse(GetAtoms(obj).NotNull()), config ?? PenisConfiguration.Default);
@@ -60,11 +68,23 @@ namespace PiENIS
             }
         }
 
-        public static T DeserializeObject<T>(string str)
+        /// <summary>
+        /// Deserializes from a PENIS-serialized string into an object of type <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">The object's type.</typeparam>
+        /// <param name="str">The PENIS-serialized object text.</param>
+        /// <param name="config">The configuration to use.</param>
+        public static T DeserializeObject<T>(string str, PenisConfiguration config = null)
         {
-            return (T)DeserializeObject(typeof(T), str);
+            return (T)DeserializeObject(typeof(T), str, config);
         }
 
+        /// <summary>
+        /// Deserializes from a PENIS-serialized string into an object of type <paramref name="type"/>.
+        /// </summary>
+        /// <param name="type">The object's type.</param>
+        /// <param name="str">The PENIS-serialized object text.</param>
+        /// <param name="config">The configuration to use.</param>
         public static object DeserializeObject(Type type, string str, PenisConfiguration config = null)
         {
             config = config ?? PenisConfiguration.Default;

@@ -4,6 +4,9 @@ using System.Text;
 
 namespace PiENIS
 {
+    /// <summary>
+    /// Thrown when there's a parser exception (i.e. the file is malformed).
+    /// </summary>
     [Serializable]
     public class ParserException : Exception
     {
@@ -15,6 +18,9 @@ namespace PiENIS
           System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
     
+    /// <summary>
+    /// Thrown when there's a conversion error.
+    /// </summary>
     [Serializable]
     public class ConvertException : Exception
     {
