@@ -8,6 +8,7 @@ namespace PiENIS
 {
     internal interface IAtom
     {
+        IList<IDecoration> Decorations { get; }
         string Key { get; }
     }
 
@@ -16,11 +17,13 @@ namespace PiENIS
     {
         public string Key { get; }
         public object Value { get; }
+        public IList<IDecoration> Decorations { get; }
 
-        public KeyValueAtom(string key, object value) : this()
+        public KeyValueAtom(string key, object value, IList<IDecoration> decorations = null)
         {
             this.Key = key;
             this.Value = value;
+            this.Decorations = decorations ?? new List<IDecoration>();
         }
 
         public bool Equals(KeyValueAtom other) =>
@@ -38,12 +41,14 @@ namespace PiENIS
         public string Key { get; }
         public bool IsList { get; }
         public IList<IAtom> Atoms { get; }
+        public IList<IDecoration> Decorations { get; }
 
-        public ContainerAtom(string key, bool isList, IList<IAtom> atoms = null)
+        public ContainerAtom(string key, bool isList, IList<IAtom> atoms = null, IList<IDecoration> decorations = null)
         {
             this.Key = key;
             this.IsList = isList;
             this.Atoms = atoms ?? new List<IAtom>(new IAtom[0]);
+            this.Decorations = decorations ?? new List<IDecoration>();
         }
 
         public bool Equals(ContainerAtom other)

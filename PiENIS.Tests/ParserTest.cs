@@ -8,7 +8,7 @@ namespace PiENIS.Tests
     [TestClass]
     public class ParserTest
     {
-        private static string[] L(string str) => str.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        private static string[] L(string str) => str.SplitLines();
 
         [TestMethod]
         public void SimpleKeyValue()
@@ -68,6 +68,35 @@ foo: bar #this too
             var ret = Parser.Parse(Lexer.Lex(L("hola: \"\"\"\ntest: foo\nlol que tal\n\"\"\"")));
 
             Assert.AreEqual(ret[0], new KeyValueAtom("hola", "test: foo\nlol que tal"));
+        }
+
+        [TestMethod]
+        public void DecoratorComment()
+        {
+            var ret = Parser.Parse(Lexer.Lex(L(@"#com
+el: val #com
+#com")));
+
+            Assert.AreEqual(ret[0].Decorations[0], new CommentDecoration("com", CommentDecoration.Positions.Before));
+            Assert.AreEqual(ret[0].Decorations[1], new CommentDecoration("com", CommentDecoration.Positions.Inline));
+            Assert.AreEqual(ret[0].Decorations[2], new CommentDecoration("com", CommentDecoration.Positions.After));
+
+            Assert.AreEqual(ret[0].Key, "el");
+            Assert.AreEqual(((KeyValueAtom)ret[0]).Value, "val");
+        }
+
+        [TestMethod]
+        public void DecoratorEmptyLines()
+        {
+            var ret = Parser.Parse(Lexer.Lex(L(@"
+el: val
+")));
+
+            Assert.AreEqual(ret[0].Decorations[0], new EmptyLineDecoration(EmptyLineDecoration.Positions.Before));
+            Assert.AreEqual(ret[0].Decorations[1], new EmptyLineDecoration(EmptyLineDecoration.Positions.After));
+
+            Assert.AreEqual(ret[0].Key, "el");
+            Assert.AreEqual(((KeyValueAtom)ret[0]).Value, "val");
         }
     }
 }

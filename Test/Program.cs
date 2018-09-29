@@ -26,36 +26,38 @@ namespace Test
             public object Integer { get; set; }
             public string String { get; set; }
             public IDK Foo { get; set; }
-            public int[][] Numbers { get; set; }
-            public EnumT Ena;
+            public object[] Array;
         }
 
         static void Main(string[] args)
         {
-            var str = @"
-Integer: 123
-String: Hello World!
-Foo:
-    LoL: true
-Numbers:
-    -
-        - 1
-        - 2
-    -
-        - 3
-        - 4
-    -
-        - 5
-        - 6
-Ena: BB
-";
+            const string str = @"#first comment
+some: element #inline comment
+#another comment
 
-            var l = new PENIS(new MemoryFile(str));
+other: element #in
+#le comment";
+
+            var file = new MemoryFile(str);
+            var s = new PENIS(file);
+
+            Console.WriteLine(file.Content);
+
+            s.Set("other", "i don't know");
+            s.Save();
+            Console.WriteLine("=============================");
+            Console.WriteLine(file.Content);
+
+            s.Set("other", new[] { 1, 2, 3, 4, 5 });
+            s.Save();
+            Console.WriteLine("=============================");
+            Console.WriteLine(file.Content);
+            Console.ReadKey(true);
         }
 
         private class MemoryFile : IFile
         {
-            private string Content;
+            public string Content;
 
             public MemoryFile(string content)
             {

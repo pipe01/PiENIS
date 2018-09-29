@@ -8,7 +8,7 @@ namespace PiENIS.Tests
     [TestClass]
     public class LexerTest
     {
-        private static string[] L(string str) => str.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        private static string[] L(string str) => str.SplitLines();
 
         [TestMethod]
         public void SimpleKeyValue()
@@ -105,6 +105,14 @@ three lines
         public void Comment()
         {
             AssertTypesMatch(Lexer.Lex(L("#this is #a comment")), LexToken.Types.Comment);
+        }
+
+        [TestMethod]
+        public void EmptyLines()
+        {
+            AssertTypesMatch(Lexer.Lex(L(@"
+el: val
+")), LexToken.Types.EmptyLine, LexToken.Types.Key, LexToken.Types.Value, LexToken.Types.EmptyLine);
         }
 
         [TestMethod]

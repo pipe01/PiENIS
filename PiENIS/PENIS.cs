@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -46,26 +47,94 @@ namespace PiENIS
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
-        private readonly LexToken[] LexedTokens;
-        private readonly IAtom[] ParsedAtoms;
+        private LexToken[] LexedTokens;
+        private IList<IAtom> ParsedAtoms;
+        private readonly IFile File;
 
         public PENIS(IFile file)
         {
-            this.LexedTokens = Lexer.Lex(file.ReadAll().SplitLines()).ToArray();
-            this.ParsedAtoms = Parser.Parse(LexedTokens);
+            this.File = file;
+            this.Reload();
         }
         
         public Traverser this[string key]
         {
-            get
+            get => GetTraverser(key, true);
+        }
+
+        public T Get<T>(string key, T @default = default) => (T)Get(key, typeof(T), @default);
+
+        public object Get(string key, Type type, object @default = null)
+        {
+            var traverser = GetTraverser(key, false);
+
+            if (traverser.Equals(default(Traverser)))
+                return @default;
+
+            return traverser.To(type);
+        }
+
+        private Traverser GetTraverser(string key, bool @throw)
+        {
+            var atom = ParsedAtoms.SingleOrDefault(o => o.Key == key);
+
+            if (atom == null)
             {
-                var atom = ParsedAtoms.SingleOrDefault(o => o.Key == key);
-
-                if (atom == null)
+                if (@throw)
                     throw new KeyNotFoundException();
-
-                return new Traverser(atom);
+                else
+                    return default;
             }
+
+            return new Traverser(atom);
+        }
+
+        public void Set(string key, object value)
+        {
+            var atom = this.ParsedAtoms.SingleOrDefault(o => o.Key.Equals(key));
+            int index = -1;
+            IEnumerable<IDecoration> decorations = null;
+            Type previousType = null;
+
+            if (atom != null)
+            {
+                index = this.ParsedAtoms.IndexOf(atom);
+                decorations = atom.Decorations;
+                previousType = atom.GetType();
+            }
+            
+            atom = PenisConvert.GetAtom(key, value);
+            
+            if (decorations != null)
+            {
+                foreach (var item in decorations)
+                {
+                    //Skip comment if the new atom isn't the same type as the previous one (KeyValue != Container)
+                    if (!(item is CommentDecoration comment)
+                        || comment.Position != CommentDecoration.Positions.Inline
+                        || previousType == null
+                        || atom.GetType() == previousType)
+                    {
+                        atom.Decorations.Add(item);
+                    }
+                }
+            }
+
+            if (index == -1)
+                this.ParsedAtoms.Add(atom);
+            else
+                this.ParsedAtoms[index] = atom;
+        }
+
+        public void Reload()
+        {
+            this.LexedTokens = Lexer.Lex(this.File.ReadAll().SplitLines()).ToArray();
+            this.ParsedAtoms = Parser.Parse(LexedTokens).ToList();
+        }
+
+        public void Save()
+        {
+            this.File.WriteAll(Lexer.Unlex(Parser.Unparse(this.ParsedAtoms)));
         }
 
         public object ToObject(Type type) => PenisConvert.DeserializeObject(ParsedAtoms, type);
