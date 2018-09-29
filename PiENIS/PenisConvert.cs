@@ -8,9 +8,6 @@ namespace PiENIS
 {
     public static class PenisConvert
     {
-        //TODO Make config class
-        public static bool IgnoreCase { get; set; }
-
         private static readonly Type[] PrimitiveTypes = new[]
         {
             typeof(int),
@@ -20,9 +17,9 @@ namespace PiENIS
             typeof(string)
         };
 
-        public static string SerializeObject(object obj)
+        public static string SerializeObject(object obj, PenisConfiguration config = null)
         {
-            return Lexer.Unlex(Parser.Unparse(GetAtoms(obj).NotNull()));
+            return Lexer.Unlex(Parser.Unparse(GetAtoms(obj).NotNull()), config ?? PenisConfiguration.Default);
         }
 
         private static IEnumerable<IAtom> GetAtoms(object o)
@@ -68,42 +65,46 @@ namespace PiENIS
             return (T)DeserializeObject(typeof(T), str);
         }
 
-        public static object DeserializeObject(Type type, string str)
+        public static object DeserializeObject(Type type, string str, PenisConfiguration config = null)
         {
-            var lex = Lexer.Lex(str.SplitLines());
-            var parsed = Parser.Parse(lex);
+            config = config ?? PenisConfiguration.Default;
+
+            var lex = Lexer.Lex(str.SplitLines(), config);
+            var parsed = Parser.Parse(lex, config);
 
             return DeserializeObject(parsed, type);
         }
 
-        internal static object DeserializeObject(IEnumerable<IAtom> atoms, Type type)
+        internal static object DeserializeObject(IEnumerable<IAtom> atoms, Type type, PenisConfiguration config = null)
         {
+            config = config ?? PenisConfiguration.Default;
+
             var instance = Activator.CreateInstance(type);
             var atomsList = new List<IAtom>(atoms);
 
             foreach (var member in GetPropsAndFields(type))
             {
                 var atom = atomsList.SingleOrDefault(o => o.Key?.Equals(member.Name,
-                        IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false);
+                        config.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false);
 
                 if (atom != null)
                 {
                     atomsList.Remove(atom);
 
-                    member.SetValue(instance, ConvertAtom(atom, member.GetMemberType()));
+                    member.SetValue(instance, ConvertAtom(atom, member.GetMemberType(), config));
                 }
             }
 
             return instance;
         }
 
-        internal static object ConvertAtom(IAtom atom, Type targetType)
+        internal static object ConvertAtom(IAtom atom, Type targetType, PenisConfiguration config)
         {
             if (atom is KeyValueAtom kva)
             {
                 if (targetType.IsEnum && kva.Value is string str)
                 {
-                    return Enum.Parse(targetType, str, IgnoreCase);
+                    return Enum.Parse(targetType, str, config.IgnoreCase);
                 }
 
                 return kva.Value;
@@ -116,7 +117,7 @@ namespace PiENIS
                         throw new ConvertException("Found list in file but target field isn't an array.");
 
                     var itemType = targetType.GetElementType();
-                    var items = container.Atoms.Select(o => ConvertAtom(o, itemType));
+                    var items = container.Atoms.Select(o => ConvertAtom(o, itemType, config));
 
                     var array = (Array)Activator.CreateInstance(targetType, new object[] { container.Atoms.Count });
 

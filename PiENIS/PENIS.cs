@@ -12,17 +12,18 @@ namespace PiENIS
         public struct Traverser : IEnumerable<Traverser>
         {
             private readonly IAtom Atom;
+            private readonly PenisConfiguration Config;
 
             public Traverser this[int i]
             {
-                get => Atom is ContainerAtom cont && cont.IsList ? new Traverser(cont.Atoms[i]) :
+                get => Atom is ContainerAtom cont && cont.IsList ? new Traverser(cont.Atoms[i], this.Config) :
                     throw new InvalidOperationException();
             }
 
             public Traverser this[string key]
             {
                 get => Atom is ContainerAtom cont && !cont.IsList ?
-                    new Traverser(cont.Atoms.FirstOrDefault(o => o.Key == key) ?? throw new KeyNotFoundException()) :
+                    new Traverser(cont.Atoms.FirstOrDefault(o => o.Key == key) ?? throw new KeyNotFoundException(), this.Config) :
                     throw new InvalidOperationException();
             }
 
@@ -30,19 +31,24 @@ namespace PiENIS
             public bool IsObject => Atom is ContainerAtom cont && !cont.IsList;
             public string Key => Atom.Key;
 
-            internal Traverser(IAtom atom)
+            internal Traverser(IAtom atom, PenisConfiguration config)
             {
                 this.Atom = atom;
+                this.Config = config;
             }
 
-            public object To(Type type) => PenisConvert.ConvertAtom(this.Atom, type);
+            public object To(Type type) => PenisConvert.ConvertAtom(this.Atom, type, this.Config);
 
             public T To<T>() => (T)To(typeof(T));
 
             public IEnumerator<Traverser> GetEnumerator()
-                => Atom is ContainerAtom cont
-                    ? cont.Atoms.Select(o => new Traverser(o)).GetEnumerator()
-                    : throw new InvalidOperationException();
+            {
+                var config = this.Config;
+
+                return Atom is ContainerAtom cont
+                        ? cont.Atoms.Select(o => new Traverser(o, config)).GetEnumerator()
+                        : throw new InvalidOperationException();
+            }
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
@@ -50,10 +56,13 @@ namespace PiENIS
         private LexToken[] LexedTokens;
         private IList<IAtom> ParsedAtoms;
         private readonly IFile File;
+        private PenisConfiguration Config;
 
-        public PENIS(IFile file)
+        public PENIS(IFile file, PenisConfiguration config = null)
         {
             this.File = file;
+            this.Config = config;
+
             this.Reload();
         }
         
@@ -86,7 +95,7 @@ namespace PiENIS
                     return default;
             }
 
-            return new Traverser(atom);
+            return new Traverser(atom, this.Config);
         }
 
         public void Set(string key, object value)
@@ -128,20 +137,25 @@ namespace PiENIS
 
         public void Reload()
         {
-            this.LexedTokens = Lexer.Lex(this.File.ReadAll().SplitLines()).ToArray();
-            this.ParsedAtoms = Parser.Parse(LexedTokens).ToList();
+            this.LexedTokens = Lexer.Lex(this.File.ReadAll().SplitLines(), this.Config).ToArray();
+            this.ParsedAtoms = Parser.Parse(LexedTokens, this.Config).ToList();
         }
 
         public void Save()
         {
-            this.File.WriteAll(Lexer.Unlex(Parser.Unparse(this.ParsedAtoms)));
+            this.File.WriteAll(Lexer.Unlex(Parser.Unparse(this.ParsedAtoms), this.Config));
         }
 
         public object ToObject(Type type) => PenisConvert.DeserializeObject(ParsedAtoms, type);
 
         public T ToObject<T>() => (T)ToObject(typeof(T));
 
-        public IEnumerator<Traverser> GetEnumerator() => ParsedAtoms.Select(o => new Traverser(o)).GetEnumerator();
+        public IEnumerator<Traverser> GetEnumerator()
+        {
+            var config = this.Config;
+            return ParsedAtoms.Select(o => new Traverser(o, config)).GetEnumerator();
+        }
+
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

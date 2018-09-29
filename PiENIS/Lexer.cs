@@ -62,7 +62,6 @@ namespace PiENIS
 
         public const char CommentBegin = '#';
         public const char IndentationChar = ' ';
-        public const int IndentationCount = 4;
         public const char KeyValueSeparator = ':';
         public const char ListItemBegin = '-';
         public const char EscapeCharacter = '\\';
@@ -71,19 +70,19 @@ namespace PiENIS
         public const char OpenString = '"';
         public const char CloseString = '"';
 
-        public static IEnumerable<LexToken> Lex(string[] lines)
+        public static IEnumerable<LexToken> Lex(string[] lines, PenisConfiguration config)
         {
             int i = 0;
             var state = new State();
             
             foreach (var line in lines)
             {
-                foreach (var tk in ParseLine(line, i++, state))
+                foreach (var tk in ParseLine(line, i++, state, config))
                     yield return tk;
             }
         }
 
-        private static IEnumerable<LexToken> ParseLine(string line, int lineIndex, State state)
+        private static IEnumerable<LexToken> ParseLine(string line, int lineIndex, State state, PenisConfiguration config)
         {
             if (string.IsNullOrWhiteSpace(line) && !state.InMultiline)
             {
@@ -91,7 +90,7 @@ namespace PiENIS
                 yield break;
             }
 
-            int indentation = line.TakeWhile(o => o == IndentationChar).Count() / IndentationCount;
+            int indentation = line.TakeWhile(o => o == IndentationChar).Count() / config.IndentationCount;
             //line = line.Substring(indentation * IndentationCount);
 
             bool onIndentation = true;
@@ -184,7 +183,7 @@ namespace PiENIS
             bool IsFirst() => hasAddedAny ? false : hasAddedAny = true;
         }
 
-        public static string Unlex(IEnumerable<LexToken> tokens)
+        public static string Unlex(IEnumerable<LexToken> tokens, PenisConfiguration config)
         {
             var str = new StringBuilder();
 
@@ -195,7 +194,7 @@ namespace PiENIS
                     if (str.Length != 0 || token.Type == LexToken.Types.EmptyLine)
                         str.AppendLine();
 
-                    str.Append(new string(IndentationChar, IndentationCount * token.IndentLevel));
+                    str.Append(new string(IndentationChar, config.IndentationCount * token.IndentLevel));
                 }
 
                 switch (token.Type)

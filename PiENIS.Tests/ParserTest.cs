@@ -10,10 +10,12 @@ namespace PiENIS.Tests
     {
         private static string[] L(string str) => str.SplitLines();
 
+        private static PenisConfiguration C = PenisConfiguration.Default;
+
         [TestMethod]
         public void SimpleKeyValue()
         {
-            var ret = Parser.Parse(Lexer.Lex(L("foo: bar")));
+            var ret = Parser.Parse(Lexer.Lex(L("foo: bar"), C), C);
 
             Assert.AreEqual(ret[0], new KeyValueAtom("foo", "bar"));
         }
@@ -23,7 +25,7 @@ namespace PiENIS.Tests
         {
             var ret = Parser.Parse(Lexer.Lex(L(@"#ignore
 foo: bar #this too
-#and this")));
+#and this"), C), C);
 
             Assert.AreEqual(ret[0], new KeyValueAtom("foo", "bar"));
         }
@@ -33,7 +35,7 @@ foo: bar #this too
         {
             var ret = Parser.Parse(Lexer.Lex(L(@"list:
     - first
-    - second")));
+    - second"), C), C);
 
             Assert.AreEqual(ret[0], new ContainerAtom("list", true, new List<IAtom>
             {
@@ -49,7 +51,7 @@ foo: bar #this too
     - first
     -
         - inner first
-        - inner second")));
+        - inner second"), C), C);
 
             Assert.AreEqual(ret[0], new ContainerAtom("list", true, new List<IAtom>
             {
@@ -65,7 +67,7 @@ foo: bar #this too
         [TestMethod]
         public void MultilineString()
         {
-            var ret = Parser.Parse(Lexer.Lex(L("hola: \"\"\"\ntest: foo\nlol que tal\n\"\"\"")));
+            var ret = Parser.Parse(Lexer.Lex(L("hola: \"\"\"\ntest: foo\nlol que tal\n\"\"\""), C), C);
 
             Assert.AreEqual(ret[0], new KeyValueAtom("hola", "test: foo\nlol que tal"));
         }
@@ -75,7 +77,7 @@ foo: bar #this too
         {
             var ret = Parser.Parse(Lexer.Lex(L(@"#com
 el: val #com
-#com")));
+#com"), C), C);
 
             Assert.AreEqual(ret[0].Decorations[0], new CommentDecoration("com", CommentDecoration.Positions.Before));
             Assert.AreEqual(ret[0].Decorations[1], new CommentDecoration("com", CommentDecoration.Positions.Inline));
@@ -90,7 +92,7 @@ el: val #com
         {
             var ret = Parser.Parse(Lexer.Lex(L(@"
 el: val
-")));
+"), C), C);
 
             Assert.AreEqual(ret[0].Decorations[0], new EmptyLineDecoration(EmptyLineDecoration.Positions.Before));
             Assert.AreEqual(ret[0].Decorations[1], new EmptyLineDecoration(EmptyLineDecoration.Positions.After));

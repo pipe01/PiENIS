@@ -8,20 +8,15 @@ namespace PiENIS
 {
     internal static class Parser
     {
-        public class Config
+        public static IAtom[] Parse(IEnumerable<LexToken> tokens, PenisConfiguration config)
         {
-            public bool ParseLiteralValues { get; set; } = true;
-        }
-        
-        public static IAtom[] Parse(IEnumerable<LexToken> tokens, Config config = default)
-        {
-            var atoms = ParseInner(tokens, config ?? new Config());
+            var atoms = ParseInner(tokens, config);
             CheckSyntax(atoms);
 
             return atoms.ToArray();
         }
 
-        private static IEnumerable<IAtom> ParseInner(IEnumerable<LexToken> tokens, Config config)
+        private static IEnumerable<IAtom> ParseInner(IEnumerable<LexToken> tokens, PenisConfiguration config)
         {
             var linkedTokens = new LinkedList<LexToken>(tokens);
             LinkedListNode<LexToken> tokenNode = linkedTokens.First;
@@ -74,8 +69,7 @@ namespace PiENIS
                         }
                         else
                         {
-                            value = config.ParseLiteralValues ? ParseValue(tokenNode.Next.Value.Value) :
-                                tokenNode.Next.Value.Value;
+                            value = ParseValue(tokenNode.Next.Value.Value);
                         }
 
                         var atom = new KeyValueAtom(token.Value, value);
