@@ -61,7 +61,7 @@ namespace PiENIS
         public PENIS(IFile file, PenisConfiguration config = null)
         {
             this.File = file;
-            this.Config = config;
+            this.Config = config ?? PenisConfiguration.Default;
 
             this.Reload();
         }
@@ -73,7 +73,7 @@ namespace PiENIS
 
         private Traverser GetTraverser(string key, bool @throw)
         {
-            var atom = ParsedAtoms.SingleOrDefault(o => o.Key == key);
+            var atom = ParsedAtoms.SingleOrDefault(o => o.Key.Equals(key));
 
             if (atom == null)
             {
@@ -135,6 +135,45 @@ namespace PiENIS
                 this.ParsedAtoms.Add(atom);
             else
                 this.ParsedAtoms[index] = atom;
+        }
+
+        public void Remove(string key)
+        {
+            var atom = ParsedAtoms.SingleOrDefault(o => o.Key.Equals(key));
+
+            if (atom == null)
+                throw new KeyNotFoundException();
+
+            var decorations = atom.Decorations;
+            int index = ParsedAtoms.IndexOf(atom);
+
+            ParsedAtoms.Remove(atom);
+
+            if (ParsedAtoms.Count == 0)
+                return;
+            
+            var newParent = 
+                  index > 0 ? ParsedAtoms[index - 1]
+                : index < ParsedAtoms.Count ? ParsedAtoms[index]
+                : null;
+            bool isAfterOld = ParsedAtoms.IndexOf(newParent) >= index;
+
+            if (newParent == null)
+                return;
+
+            foreach (var item in decorations)
+            {
+                if (item is EmptyLineDecoration)
+                {
+                    newParent.Decorations.Add(new EmptyLineDecoration(
+                        isAfterOld ? EmptyLineDecoration.Positions.Before : EmptyLineDecoration.Positions.After));
+                }
+                else if (item is CommentDecoration comment && comment.Position != CommentDecoration.Positions.Inline)
+                {
+                    newParent.Decorations.Add(new CommentDecoration(comment.Comment,
+                        isAfterOld ? CommentDecoration.Positions.Before : CommentDecoration.Positions.After));
+                }
+            }
         }
 
         public void Reload()

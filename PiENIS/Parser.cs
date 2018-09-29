@@ -172,7 +172,7 @@ namespace PiENIS
                 {
                     if (item is EmptyLineDecoration emptyLine && emptyLine.Position == EmptyLineDecoration.Positions.Before)
                     {
-                        yield return new LexToken(LexToken.Types.EmptyLine, null, 0, false);
+                        yield return new LexToken(LexToken.Types.EmptyLine, null, 0, true);
                     }
                     else if (item is CommentDecoration comment && comment.Position == CommentDecoration.Positions.Before)
                     {

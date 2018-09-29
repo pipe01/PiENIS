@@ -48,7 +48,7 @@ other: element #in
             Console.WriteLine("=============================");
             Console.WriteLine(file.Content);
 
-            s.Set("other", new[] { 1, 2, 3, 4, 5 });
+            s.Remove("some");
             s.Save();
             Console.WriteLine("=============================");
             Console.WriteLine(file.Content);
