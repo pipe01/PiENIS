@@ -55,8 +55,9 @@ namespace PiENIS
 
         private LexToken[] LexedTokens;
         private IList<IAtom> ParsedAtoms;
+
         private readonly IFile File;
-        private PenisConfiguration Config;
+        private readonly PenisConfiguration Config;
 
         public PENIS(IFile file, PenisConfiguration config = null)
         {
@@ -184,12 +185,14 @@ namespace PiENIS
 
         public void Save()
         {
-            this.File.WriteAll(Lexer.Unlex(Parser.Unparse(this.ParsedAtoms), this.Config));
+            this.File.WriteAll(Serialize());
         }
 
         public object ToObject(Type type) => PenisConvert.DeserializeObject(ParsedAtoms, type);
 
         public T ToObject<T>() => (T)ToObject(typeof(T));
+
+        public string Serialize() => Lexer.Unlex(Parser.Unparse(this.ParsedAtoms), this.Config);
 
         public IEnumerator<Traverser> GetEnumerator()
         {

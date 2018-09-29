@@ -46,7 +46,7 @@ namespace PiENIS
                 if (token.Type == LexToken.Types.Key || token.Type == LexToken.Types.BeginListItem)
                 {
                     var nextType = tokenNode.Next?.Value.Type;
-
+                    
                     //Check for simple "key: value" pair or list item
                     if (nextType == LexToken.Types.Value || nextType == LexToken.Types.BeginMultilineString)
                     {
@@ -75,7 +75,7 @@ namespace PiENIS
                         var atom = new KeyValueAtom(token.Value, value);
 
                         if (containerStack.Count > 0)
-                            containerStack.Peek().Atom.Atoms.Add(atom);
+                            containerStack.Peek().Atom.Atoms.Add(lastAtom = atom);
                         else
                             yield return lastAtom = atom;
 

@@ -54,19 +54,5 @@ other: element #in
             Console.WriteLine(file.Content);
             Console.ReadKey(true);
         }
-
-        private class MemoryFile : IFile
-        {
-            public string Content;
-
-            public MemoryFile(string content)
-            {
-                this.Content = content;
-            }
-
-            public string ReadAll() => Content;
-
-            public void WriteAll(string contents) => this.Content = contents;
-        }
     }
 }

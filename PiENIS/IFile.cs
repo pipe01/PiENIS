@@ -24,4 +24,18 @@ namespace PiENIS
 
         public void WriteAll(string contents) => File.WriteAllText(this.Path, contents);
     }
+
+    public sealed class MemoryFile : IFile
+    {
+        public string Content { get; set; }
+
+        public MemoryFile(string content)
+        {
+            this.Content = content;
+        }
+
+        public string ReadAll() => Content;
+        
+        public void WriteAll(string contents) => Content = contents;
+    }
 }
