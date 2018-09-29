@@ -1,144 +1,152 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
-
-[assembly: InternalsVisibleTo("Test")]
 
 namespace PiENIS
 {
-    internal class Parser
+    internal static class Parser
     {
-        public const string Comment = "#";
-        public const char KeySeparator = ':';
-        public const char EscapeCharacter = '\\';
-        public const string ListItemStart = "-";
-        public const int IndentationSpaces = 4;
-
-        private bool ParsingMultiline;
-
-        public IEnumerable<INode> Parse(string[] lines) => Parse(new LinkedList<Line>(TransformLines(lines)));
-
-        private IEnumerable<INode> Parse(LinkedList<Line> lines)
+        public class Config
         {
-            var nodeStack = new Stack<IParentNode>();
-            LinkedListNode<Line> current = lines.First;
+            public bool ParseLiteralValues { get; set; } = true;
+        }
+        
+        public static IAtom[] Parse(IEnumerable<LexToken> tokens, Config config = default)
+        {
+            var atoms = ParseInner(tokens, config ?? new Config());
+            CheckSyntax(atoms);
+
+            return atoms.ToArray();
+        }
+
+        private static IEnumerable<IAtom> ParseInner(IEnumerable<LexToken> tokens, Config config)
+        {
+            var linkedTokens = new LinkedList<LexToken>(tokens);
+            LinkedListNode<LexToken> tokenNode = linkedTokens.First;
+
+            var containerStack = new Stack<(LexToken Token, ContainerAtom Atom)>();
 
             do
             {
-                if (current.Value.Level == 0)
-                {
-                    var node = ParseLineNode(current);
-
-                    if (node != null)
-                        yield return node;
-                }
-            } while ((current = current.Next) != null);
-        }
-
-        private INode ParseLineNode(LinkedListNode<Line> current, Line? parentLine = null)
-        {
-            var line = current.Value;
-
-            if (line.Type == LineType.Comment)
-                return null;
-
-            if (ParsingMultiline)
-            {
-                //TODO
-                return null;
-            }
-
-            if (line.Level > 0 && parentLine == null)
-                throw new LineFormatException(line.Number, "invalid indentation");
-
-            int separator = GetSeparatorInLine(line.Data);
-
-            string key = separator >= 0 ? line.Data.Substring(0, separator).Trim() : null;
-            string value = separator >= 0 ? line.Data.Substring(separator + 1).Trim() : null;
-
-            //Parse list or object item
-            if (parentLine != null && line.Level == parentLine?.Level + 1)
-            {
-                if (line.Data.TrimStart().StartsWith(ListItemStart))
-                {
-                    string itemValue = line.Data.TrimStart().Substring(ListItemStart.Length);
-
-                    if (string.IsNullOrWhiteSpace(itemValue))
-                        return ParseLineNode(current.Next, line);
-                    
-                    return new LiteralNode(DataConverter.ParseValue(itemValue));
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(value))
-                        return ParseLineNode(current.Next, line);
-
-                    return new SimpleKeyValueNode(key, new LiteralNode(DataConverter.ParseValue(value)));
-                }
-            }
-
-            if (separator == -1)
-                throw new LineFormatException(line.Number, "invalid line");
-            
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return ParseObjectOrList(current, line, key);
-            }
-
-            return new SimpleKeyValueNode(key, new LiteralNode(DataConverter.ParseValue(value)));
-        }
-
-        private INode ParseObjectOrList(LinkedListNode<Line> current, Line line, string key)
-        {
-            var nextNode = ParseLineNode(current.Next, line);
-
-            IParentNode parentNode;
-
-            if (nextNode is IKeyNode)
-            {
-                parentNode = new ObjectNode(key);
-            }
-            else
-            {
-                parentNode = new ListNode(key);
-            }
-
-            var currItem = current.Next;
-
-            do
-            {
-                if (currItem.Value.Level == line.Level + 1)
-                    parentNode.Children.Add(ParseLineNode(currItem, line));
-                else
+                if (tokenNode == null)
                     break;
-            } while ((currItem = currItem.Next) != null && currItem.Value.Level > line.Level);
 
-            return parentNode;
-        }
+                var token = tokenNode.Value;
 
-        private static IEnumerable<Line> TransformLines(string[] raw)
-        {
-            return raw.Select((o, i) =>
+                //Check if we exited any containers
+                while (containerStack.Count > 0 && token.IndentLevel <= containerStack.Peek().Token.IndentLevel)
+                {
+                    var atom = containerStack.Pop().Atom;
+
+                    if (containerStack.Count > 0)
+                        containerStack.Peek().Atom.Atoms.Add(atom);
+                    else
+                        yield return atom;
+                }
+
+                if (token.Type == LexToken.Types.Key || token.Type == LexToken.Types.BeginListItem)
+                {
+                    var nextType = tokenNode.Next?.Value.Type;
+
+                    //Check for simple "key: value" pair or list item
+                    if (nextType == LexToken.Types.Value || nextType == LexToken.Types.BeginMultilineString)
+                    {
+                        object value;
+
+                        if (nextType == LexToken.Types.BeginMultilineString)
+                        {
+                            var startingToken = tokenNode;
+                            tokenNode = tokenNode.Next;
+
+                            string str = "";
+
+                            while ((tokenNode = tokenNode.Next).Value.Type != LexToken.Types.EndMultilineString)
+                            {
+                                str += tokenNode.Value.Value + "\n";
+                            }
+
+                            value = str.TrimEnd('\n');
+                            tokenNode = startingToken;
+                        }
+                        else
+                        {
+                            value = config.ParseLiteralValues ? ParseValue(tokenNode.Next.Value.Value) :
+                                tokenNode.Next.Value.Value;
+                        }
+
+                        var atom = new KeyValueAtom(token.Value, value);
+
+                        if (containerStack.Count > 0)
+                            containerStack.Peek().Atom.Atoms.Add(atom);
+                        else
+                            yield return atom;
+
+                        tokenNode = tokenNode.Next;
+                    }
+                    else //Item container (i.e. object or list) begins
+                    {
+                        bool isList = tokenNode != linkedTokens.Last && tokenNode.Next.Value.Type == LexToken.Types.BeginListItem;
+
+                        containerStack.Push((token, new ContainerAtom(token.Value, isList)));
+                    }
+                }
+            } while ((tokenNode = tokenNode.Next) != null);
+
+            if (containerStack.Count != 0)
             {
-                var type = o.StartsWith(Comment) ? LineType.Comment :
-                            string.IsNullOrWhiteSpace(o) ? LineType.Empty :
-                            LineType.Data;
+                (LexToken Token, IAtom Atom) container = default;
 
-                return new Line(i, type, o);
-            });
-        }
+                do
+                {
+                    if (containerStack.Count > 0)
+                        container = containerStack.Pop();
 
-        private static int GetSeparatorInLine(string line)
-        {
-            for (int i = 0; i < line.Length; i++)
-            {
-                if (line[i] == KeySeparator) //TODO Check for strings or whatever
-                    return i;
+                    if (containerStack.Count == 0)
+                        yield return container.Atom;
+                    else
+                        containerStack.Peek().Atom.Atoms.Add(container.Atom);
+                } while (containerStack.Count > 0);
             }
+        }
 
-            return -1;
+        private static object ParseValue(string value)
+        {
+            if (int.TryParse(value, out var i))
+                return i;
+            else if (long.TryParse(value, out var l))
+                return l;
+            else if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var f))
+                return f;
+            else if (value == "nan")
+                return float.NaN;
+            else if (value == "infinity")
+                return float.PositiveInfinity;
+            else if (value == "-infinity")
+                return float.NegativeInfinity;
+            else if (bool.TryParse(value, out var b))
+                return b;
+
+            return value;
+        }
+
+        private static void CheckSyntax(IEnumerable<IAtom> atoms)
+        {
+            foreach (var atom in atoms)
+            {
+                if (atom is ContainerAtom container)
+                {
+                    foreach (var child in container.Atoms)
+                    {
+                        if (child is KeyValueAtom kv && ((kv.Key == null && !container.IsList)
+                                                     || (kv.Key != null && container.IsList)))
+                        {
+                            throw new ParserException("A list may only have list items, and an object may not have list items.");
+                        }
+                    }
+                }
+            }
         }
     }
 }

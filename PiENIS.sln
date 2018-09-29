@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PiENIS", "PiENIS\PiENIS.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{61CDC847-8D91-488D-923F-C54F75F31DED}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PiENIS.Tests", "PiENIS.Tests\PiENIS.Tests.csproj", "{89F86006-8367-472E-AE3E-323EF7D601F6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{61CDC847-8D91-488D-923F-C54F75F31DED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61CDC847-8D91-488D-923F-C54F75F31DED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61CDC847-8D91-488D-923F-C54F75F31DED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89F86006-8367-472E-AE3E-323EF7D601F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89F86006-8367-472E-AE3E-323EF7D601F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89F86006-8367-472E-AE3E-323EF7D601F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89F86006-8367-472E-AE3E-323EF7D601F6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
