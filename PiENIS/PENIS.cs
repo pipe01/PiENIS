@@ -71,18 +71,6 @@ namespace PiENIS
             get => GetTraverser(key, true);
         }
 
-        public T Get<T>(string key, T @default = default) => (T)Get(key, typeof(T), @default);
-
-        public object Get(string key, Type type, object @default = null)
-        {
-            var traverser = GetTraverser(key, false);
-
-            if (traverser.Equals(default(Traverser)))
-                return @default;
-
-            return traverser.To(type);
-        }
-
         private Traverser GetTraverser(string key, bool @throw)
         {
             var atom = ParsedAtoms.SingleOrDefault(o => o.Key == key);
@@ -96,6 +84,20 @@ namespace PiENIS
             }
 
             return new Traverser(atom, this.Config);
+        }
+
+        public T Get<T>(string key) => (T)Get(key, typeof(T));
+        public T Get<T>(string key, T @default) => (T)Get(key, typeof(T), @default);
+
+        public object Get(string key, Type type) => GetTraverser(key, true).To(type);
+        public object Get(string key, Type type, object @default)
+        {
+            var traverser = GetTraverser(key, false);
+
+            if (traverser.Equals(default(Traverser)))
+                return @default;
+
+            return traverser.To(type);
         }
 
         public void Set(string key, object value)
